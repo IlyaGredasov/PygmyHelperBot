@@ -1,18 +1,22 @@
 import asyncio
-import os
 import logging
+import os
 import re
-
-from aiogram import Bot, Dispatcher, types, Router
+from aiogram import Bot
+from aiogram import Dispatcher
+from aiogram import Router
+from aiogram import types
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.filters.command import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.state import State
+from aiogram.fsm.state import StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from numpy.random import choice
+from aiogram.types import KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup
 from collections import deque
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from numpy.random import choice
 
 bot = Bot(token=os.environ['TOKEN_API'])
 dp = Dispatcher(storage=MemoryStorage())
