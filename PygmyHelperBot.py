@@ -1,20 +1,20 @@
 import asyncio
-import os
 import logging
+import os
 import re
+from collections import deque
 
-from aiogram import Bot, Dispatcher, types, Router
+from aiogram import Bot, Dispatcher, Router, types
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.filters.command import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 from numpy.random import choice
-from collections import deque
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-bot = Bot(token=os.environ['TOKEN_API'])
+bot = Bot(token=os.environ["TOKEN_API"])
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
@@ -52,7 +52,7 @@ class Randomizer:
         Randomizer.ban_left = 0
 
 
-@dp.message(Command('start'))
+@dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
     await bot.send_message(
         chat_id=message.from_user.id,
@@ -66,14 +66,14 @@ async def start(message: types.Message, state: FSMContext):
             resize_keyboard=True,
             keyboard=[
                 [KeyboardButton(text="/start"), KeyboardButton(text="/clear")],
-                [KeyboardButton(text="/randomizer")]
-            ]
+                [KeyboardButton(text="/randomizer")],
+            ],
         ),
     )
     await state.clear()
 
 
-@dp.message(Command('clear'))
+@dp.message(Command("clear"))
 async def clear(message: types.Message):
     for i in range(message.message_id, 0, -1):
         try:
@@ -82,7 +82,7 @@ async def clear(message: types.Message):
             continue
 
 
-@dp.message(Command('randomizer'))
+@dp.message(Command("randomizer"))
 async def randomizer(message: types.Message, state: FSMContext):
     Randomizer.reset()
     await bot.send_message(
@@ -97,25 +97,31 @@ async def randomizer(message: types.Message, state: FSMContext):
         reply_markup=ReplyKeyboardMarkup(
             resize_keyboard=True,
             keyboard=[
-                [KeyboardButton(text='/show_list'), KeyboardButton(text='/stop_loading')],
-                [KeyboardButton(text='/start')]
-            ]
-        )
+                [
+                    KeyboardButton(text="/show_list"),
+                    KeyboardButton(text="/stop_loading"),
+                ],
+                [KeyboardButton(text="/start")],
+            ],
+        ),
     )
     await state.set_state(RandomizerState.list_loading)
 
 
-@dp.message(StateFilter(RandomizerState.list_loading, RandomizerState.list_is_loaded),
-            Command('show_list'))
+@dp.message(
+    StateFilter(RandomizerState.list_loading, RandomizerState.list_is_loaded),
+    Command("show_list"),
+)
 async def show_list(message: types.Message):
     await bot.send_message(
         chat_id=message.from_user.id,
-        text="".join(str(item) + '\n' for item in Randomizer.randomize_list) if len(
-            Randomizer.randomize_list) > 0 else "Empty list"
+        text="".join(str(item) + "\n" for item in Randomizer.randomize_list)
+        if len(Randomizer.randomize_list) > 0
+        else "Empty list",
     )
 
 
-@dp.message(StateFilter(RandomizerState.list_loading), Command('stop_loading'))
+@dp.message(StateFilter(RandomizerState.list_loading), Command("stop_loading"))
 async def stop_list_loading(message: types.Message, state: FSMContext):
     await state.set_state(RandomizerState.list_is_loaded)
     await bot.send_message(
@@ -128,17 +134,17 @@ async def stop_list_loading(message: types.Message, state: FSMContext):
         reply_markup=ReplyKeyboardMarkup(
             resize_keyboard=True,
             keyboard=[
-                [KeyboardButton(text='/show_list')],
-                [KeyboardButton(text='/randomizer')],
-                [KeyboardButton(text='/start')]
-            ]
-        )
+                [KeyboardButton(text="/show_list")],
+                [KeyboardButton(text="/randomizer")],
+                [KeyboardButton(text="/start")],
+            ],
+        ),
     )
 
 
 @dp.message(StateFilter(RandomizerState.list_loading))
 async def list_loading(message: types.Message):
-    for line in message.text.split('\n'):
+    for line in message.text.split("\n"):
         Randomizer.randomize_list.append(line.strip())
     await bot.send_message(
         chat_id=message.from_user.id,
@@ -153,39 +159,43 @@ async def list_loading(message: types.Message):
         reply_markup=ReplyKeyboardMarkup(
             resize_keyboard=True,
             keyboard=[
-                [KeyboardButton(text='/show_list'), KeyboardButton(text='/stop_loading')],
-                [KeyboardButton(text='/randomizer')],
-                [KeyboardButton(text='/start')]
-            ]
-        )
+                [
+                    KeyboardButton(text="/show_list"),
+                    KeyboardButton(text="/stop_loading"),
+                ],
+                [KeyboardButton(text="/randomizer")],
+                [KeyboardButton(text="/start")],
+            ],
+        ),
     )
 
 
-@dp.message(StateFilter(RandomizerState.list_is_loaded), Command('sample'))
+@dp.message(StateFilter(RandomizerState.list_is_loaded), Command("sample"))
 async def sample(message: types.Message):
     command_pattern = re.compile(r"/sample\s(\d+)$")
     result = re.match(command_pattern, message.text)
     if result is None:
         await bot.send_message(
             chat_id=message.from_user.id,
-            text="Invalid format for command. Use /sample %size%"
+            text="Invalid format for command. Use /sample %size%",
         )
         return
     sample_size = int(result.group(1))
     if sample_size > len(Randomizer.randomize_list) or sample_size < 0:
         await bot.send_message(
-            chat_id=message.from_user.id,
-            text="Sample size is invalid"
+            chat_id=message.from_user.id, text="Sample size is invalid"
         )
         return
-    sample_array = choice(Randomizer.randomize_list, size=int(sample_size), replace=False)
+    sample_array = choice(
+        Randomizer.randomize_list, size=int(sample_size), replace=False
+    )
     await bot.send_message(
         chat_id=message.from_user.id,
-        text="".join(str(item) + '\n' for item in sample_array)
+        text="".join(str(item) + "\n" for item in sample_array),
     )
 
 
-@dp.message(StateFilter(RandomizerState.list_is_loaded), Command('picking'))
+@dp.message(StateFilter(RandomizerState.list_is_loaded), Command("picking"))
 async def picking(message: types.Message, state: FSMContext):
     command_pattern = re.compile(r"/picking\s(\d+)\s(\d+)$")
     result = re.match(command_pattern, message.text)
@@ -197,7 +207,11 @@ async def picking(message: types.Message, state: FSMContext):
         return
     accept_left = int(result.group(1))
     ban_left = int(result.group(2))
-    if accept_left + ban_left > len(Randomizer.randomize_list) or accept_left <= 0 or ban_left <= 0:
+    if (
+        accept_left + ban_left > len(Randomizer.randomize_list)
+        or accept_left <= 0
+        or ban_left <= 0
+    ):
         await bot.send_message(
             chat_id=message.from_user.id,
             text="Invalid numbers in command",
@@ -208,7 +222,11 @@ async def picking(message: types.Message, state: FSMContext):
     Randomizer.eventual_sample = []
     Randomizer.accept_left = accept_left
     Randomizer.ban_left = ban_left
-    for item in choice(Randomizer.randomize_list, size=Randomizer.accept_left + Randomizer.ban_left, replace=False):
+    for item in choice(
+        Randomizer.randomize_list,
+        size=Randomizer.accept_left + Randomizer.ban_left,
+        replace=False,
+    ):
         Randomizer.picking_sample.appendleft(item)
     Randomizer.current_value = Randomizer.picking_sample.popleft()
     await bot.send_message(
@@ -217,15 +235,15 @@ async def picking(message: types.Message, state: FSMContext):
         reply_markup=ReplyKeyboardMarkup(
             resize_keyboard=True,
             keyboard=[
-                [KeyboardButton(text='/accept'), KeyboardButton(text='/ban')],
-                [KeyboardButton(text='/interrupt')]
-            ]
-        )
+                [KeyboardButton(text="/accept"), KeyboardButton(text="/ban")],
+                [KeyboardButton(text="/interrupt")],
+            ],
+        ),
     )
     await state.set_state(RandomizerState.picking)
 
 
-@dp.message(StateFilter(RandomizerState.picking), Command('interrupt'))
+@dp.message(StateFilter(RandomizerState.picking), Command("interrupt"))
 async def interrupt(message: types.Message, state: FSMContext):
     Randomizer.interrupt()
     await bot.send_message(
@@ -238,26 +256,26 @@ async def interrupt(message: types.Message, state: FSMContext):
         reply_markup=ReplyKeyboardMarkup(
             resize_keyboard=True,
             keyboard=[
-                [KeyboardButton(text='/show_list')],
-                [KeyboardButton(text='/randomizer')],
-                [KeyboardButton(text='/start')]
-            ]
-        )
+                [KeyboardButton(text="/show_list")],
+                [KeyboardButton(text="/randomizer")],
+                [KeyboardButton(text="/start")],
+            ],
+        ),
     )
     await state.set_state(RandomizerState.list_is_loaded)
 
 
-@dp.message(StateFilter(RandomizerState.picking), Command(commands=['accept', 'ban']))
+@dp.message(StateFilter(RandomizerState.picking), Command(commands=["accept", "ban"]))
 async def handle_picking(message: types.Message, state: FSMContext):
-    if message.text == '/accept':
+    if message.text == "/accept":
         Randomizer.eventual_sample.append(Randomizer.current_value)
         Randomizer.accept_left -= 1
-    elif message.text == '/ban':
+    elif message.text == "/ban":
         Randomizer.ban_left -= 1
     if Randomizer.accept_left == 0:
         await bot.send_message(
             chat_id=message.from_user.id,
-            text="".join(str(item) + '\n' for item in Randomizer.eventual_sample)
+            text="".join(str(item) + "\n" for item in Randomizer.eventual_sample),
         )
         await state.set_state(RandomizerState.list_is_loaded)
     elif Randomizer.ban_left == 0:
@@ -266,14 +284,13 @@ async def handle_picking(message: types.Message, state: FSMContext):
             Randomizer.eventual_sample.append(Randomizer.current_value)
         await bot.send_message(
             chat_id=message.from_user.id,
-            text="".join(str(item) + '\n' for item in Randomizer.eventual_sample)
+            text="".join(str(item) + "\n" for item in Randomizer.eventual_sample),
         )
         await state.set_state(RandomizerState.list_is_loaded)
     else:
         Randomizer.current_value = Randomizer.picking_sample.popleft()
         await bot.send_message(
-            chat_id=message.from_user.id,
-            text=str(Randomizer.current_value)
+            chat_id=message.from_user.id, text=str(Randomizer.current_value)
         )
 
 
